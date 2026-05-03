@@ -1,6 +1,8 @@
 /**
- * Servidor web de ejemplo: Express + MongoDB Atlas.
- * Funciones: formulario web, API REST (GET/POST/DELETE) y estado de conexión.
+ * Laboratorio educativo: Express + MongoDB Atlas.
+ * Propósito: enseñanza progresiva de MongoDB (básico → técnico → análisis profesional),
+ * alineada a la taxonomía de Bloom y a competencias numéricas / análisis de datos.
+ * Rutas: laboratorio (/), mapa (/curso), simulador (/simulador), métricas (/metricas), cierre Bloom (/cierre).
  */
 
 // Carga variables desde el archivo .env (por ejemplo MONGODB_URI) en process.env
@@ -35,18 +37,154 @@ app.use(express.json());
 // Middleware: interpreta formularios HTML enviados como application/x-www-form-urlencoded
 app.use(express.urlencoded({ extended: false }));
 
-// Sirve archivos estáticos desde la carpeta public/ (p. ej. simulador.html en /simulador.html)
-app.use(express.static(path.join(__dirname, "public")));
+// Rutas HTML explícitas ANTES de express.static para que /, /curso, /simulador, /metricas y /cierre
+// siempre respondan (evita conflictos con la resolución de archivos estáticos).
+
+const publicDir = path.join(__dirname, "public");
+
+// Mapa del curso: taxonomía de Bloom, módulos y enlaces por nivel cognitivo
+app.get("/curso", (req, res) => {
+  res.sendFile(path.join(publicDir, "curso.html"));
+});
 
 // Página didáctica: simulador tipo Postman (conceptos HTTP + prueba fetch contra /api)
 app.get("/simulador", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "simulador.html"));
+  res.sendFile(path.join(publicDir, "simulador.html"));
 });
 
 // Estimación cuantitativa/cualitativa: costo de consulta, BSON, índices, almacenamiento
 app.get("/metricas", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "metricas.html"));
+  res.sendFile(path.join(publicDir, "metricas.html"));
 });
+
+// Fase 5 Bloom · Evaluar y crear — informe, vídeo y cierre del proyecto
+app.get("/cierre", (req, res) => {
+  res.sendFile(path.join(publicDir, "cierre.html"));
+});
+
+/**
+ * Ruta GET "/": página principal con estado de BD, formulario y tabla.
+ * req = petición HTTP (query string, cabeceras...); res = respuesta que enviamos al navegador.
+ * Definida aquí (antes de express.static) para que siempre se genere este HTML y no un archivo estático.
+ */
+app.get("/", async (req, res) => {
+  const result = await checkMongoConnection();
+  const lista = await listarPersonas();
+  const statusClass = result.ok ? "ok" : "error";
+  const statusText = result.message;
+  const hintHtml = result.hint
+    ? `<p class="hint">${escapeHtml(result.hint)}</p>`
+    : "";
+
+  const guardado = req.query.guardado === "1";
+  const eliminado = req.query.eliminado === "1";
+  const errForm = req.query.err === "1";
+  const errElim = req.query.err === "eliminar";
+  let msgBanner = "";
+  if (guardado) {
+    msgBanner = `<p class="banner ok">Registro guardado en MongoDB.</p>`;
+  } else if (eliminado) {
+    msgBanner = `<p class="banner ok">Registro eliminado.</p>`;
+  } else if (errElim) {
+    msgBanner = `<p class="banner error">No se pudo eliminar (id inválido o ya borrado).</p>`;
+  } else if (errForm) {
+    msgBanner = `<p class="banner error">No se pudo guardar. Revisa los datos y la conexión.</p>`;
+  }
+
+  let filas = "";
+  if (lista.ok && lista.docs.length > 0) {
+    filas = lista.docs
+      .map((p) => {
+        const fn = p.fechaNacimiento instanceof Date
+          ? p.fechaNacimiento.toISOString().slice(0, 10)
+          : String(p.fechaNacimiento || "");
+        const idStr = p._id ? String(p._id) : "";
+        const delForm =
+          result.ok && idStr
+            ? `<form class="row-del" method="post" action="/personas/eliminar" onsubmit="return confirm('¿Eliminar este registro?');">
+            <input type="hidden" name="id" value="${escapeHtml(idStr)}">
+            <button type="submit" class="btn-del">Eliminar</button>
+          </form>`
+            : "—";
+        return `<tr><td>${escapeHtml(p.nombre || "")}</td><td>${escapeHtml(fn)}</td><td>${escapeHtml(String(p.edad ?? ""))}</td><td class="td-acc">${delForm}</td></tr>`;
+      })
+      .join("");
+  } else if (!lista.ok && result.ok) {
+    filas = `<tr><td colspan="4" class="muted">No se pudieron cargar los registros: ${escapeHtml(lista.error || "")}</td></tr>`;
+  } else {
+    filas = `<tr><td colspan="4" class="muted">Sin registros todavía.</td></tr>`;
+  }
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Laboratorio MongoDB: CRUD en vivo, conexión Atlas y misma API que el simulador HTTP y métricas.">
+  <title>Laboratorio — MongoDB (CRUD)</title>
+  <link rel="stylesheet" href="/css/aprendizaje.css?v=lab2">
+</head>
+<body class="app-body" data-page="lab">
+  <div id="site-header-mount"></div>
+  <main class="layout-main layout-main--wide" id="contenido-principal">
+    <span class="tag-bloom">Fase 3 · Bloom · Aplicar</span>
+    <h1>Laboratorio: personas en MongoDB</h1>
+    <p class="lead">
+      <strong>Bloom · Aplicar:</strong> ejecutas <strong>CRUD</strong> sobre MongoDB y la API REST con feedback inmediato (después de <strong>Comprender</strong> en el <a href="/simulador">simulador</a>, Fase 2).
+      El <a href="/curso.html">mapa</a> describe las cinco fases Bloom; el análisis técnico sigue en <a href="/metricas">métricas</a> (Fase 4) y el informe final en <a href="/cierre">cierre</a> (Fase 5).
+    </p>
+
+    <div class="cta-row" role="group" aria-label="Otras fases del curso">
+      <a class="cta cta-sec" href="/curso.html">Fase 1 · Mapa</a>
+      <a class="cta cta-sec" href="/simulador">Fase 2 · Simulador</a>
+      <a class="cta cta-primary" href="/metricas">Fase 4 · Métricas</a>
+      <a class="cta cta-sec" href="/cierre">Fase 5 · Cierre</a>
+    </div>
+
+    ${msgBanner}
+
+    <div class="card">
+      <h2>Estado de la conexión</h2>
+      <p class="status ${statusClass}">${escapeHtml(statusText)}</p>
+      ${hintHtml}
+    </div>
+
+    <div class="card">
+      <h2>Registrar persona</h2>
+      <form method="post" action="/personas">
+        <label for="nombre">Nombre</label>
+        <input type="text" id="nombre" name="nombre" required maxlength="120" autocomplete="name" placeholder="Tu nombre">
+        <label for="fechaNacimiento">Fecha de nacimiento</label>
+        <input type="date" id="fechaNacimiento" name="fechaNacimiento" required>
+        <button type="submit" ${result.ok ? "" : "disabled"}>Calcular edad y guardar</button>
+      </form>
+      ${result.ok ? `<p class="hint">Los datos se guardan en la base <strong>${escapeHtml(DB_NAME)}</strong>, colección <strong>${escapeHtml(COL_PERSONAS)}</strong>.</p>` : `<p class="hint">Conecta Atlas para habilitar el envío.</p>`}
+    </div>
+
+    <div class="card">
+      <h2>Últimos registros</h2>
+      <table class="matrix">
+        <thead><tr><th>Nombre</th><th>Fecha nac.</th><th>Edad</th><th>Acciones</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <p class="api-hint">API REST (Postman): <code>GET</code> <code>/api/personas</code> · <code>POST</code> <code>/api/personas</code> (JSON) · <code>DELETE</code> <code>/api/personas/:id</code></p>
+    </div>
+
+    <p class="page-foot">
+      Misma cabecera y tema que el resto del curso · <code>GET /</code> genera esta página en el servidor (no es un <code>.html</code> estático).
+    </p>
+  </main>
+  <script src="/js/site-nav.js?v=lab2" defer></script>
+</body>
+</html>`);
+});
+
+// Sirve el resto de archivos estáticos desde public/ (p. ej. favicon si se añade)
+app.use(express.static(publicDir));
 
 /**
  * Opciones del driver de MongoDB:
@@ -245,220 +383,6 @@ async function listarPersonas() {
     return { ok: false, docs: [], error: err.message };
   }
 }
-
-/**
- * Ruta GET "/": página principal con estado de BD, formulario y tabla.
- * req = petición HTTP (query string, cabeceras...); res = respuesta que enviamos al navegador.
- */
-app.get("/", async (req, res) => {
-  const result = await checkMongoConnection();
-  const lista = await listarPersonas();
-  // Clase CSS "ok" o "error" según si la conexión funcionó
-  const statusClass = result.ok ? "ok" : "error";
-  const statusText = result.message;
-  const hintHtml = result.hint
-    ? `<p class="hint">${escapeHtml(result.hint)}</p>`
-    : "";
-
-  // req.query lee parámetros de la URL tras "?": ej. /?guardado=1
-  const guardado = req.query.guardado === "1";
-  const eliminado = req.query.eliminado === "1";
-  const errForm = req.query.err === "1";
-  const errElim = req.query.err === "eliminar";
-  let msgBanner = "";
-  if (guardado) {
-    msgBanner = `<p class="banner ok">Registro guardado en MongoDB.</p>`;
-  } else if (eliminado) {
-    msgBanner = `<p class="banner ok">Registro eliminado.</p>`;
-  } else if (errElim) {
-    msgBanner = `<p class="banner error">No se pudo eliminar (id inválido o ya borrado).</p>`;
-  } else if (errForm) {
-    msgBanner = `<p class="banner error">No se pudo guardar. Revisa los datos y la conexión.</p>`;
-  }
-
-  let filas = "";
-  if (lista.ok && lista.docs.length > 0) {
-    // Por cada persona construimos una fila <tr> de la tabla HTML
-    filas = lista.docs
-      .map((p) => {
-        // MongoDB guarda fechas como Date; las pasamos a YYYY-MM-DD para mostrar
-        const fn = p.fechaNacimiento instanceof Date
-          ? p.fechaNacimiento.toISOString().slice(0, 10)
-          : String(p.fechaNacimiento || "");
-        const idStr = p._id ? String(p._id) : "";
-        // Formulario POST por fila: envía el _id oculto para borrar solo ese documento
-        const delForm =
-          result.ok && idStr
-            ? `<form class="row-del" method="post" action="/personas/eliminar" onsubmit="return confirm('¿Eliminar este registro?');">
-            <input type="hidden" name="id" value="${escapeHtml(idStr)}">
-            <button type="submit" class="btn-del">Eliminar</button>
-          </form>`
-            : "—";
-        return `<tr><td>${escapeHtml(p.nombre || "")}</td><td>${escapeHtml(fn)}</td><td>${escapeHtml(String(p.edad ?? ""))}</td><td class="td-acc">${delForm}</td></tr>`;
-      })
-      .join("");
-  } else if (!lista.ok && result.ok) {
-    filas = `<tr><td colspan="4" class="muted">No se pudieron cargar los registros: ${escapeHtml(lista.error || "")}</td></tr>`;
-  } else {
-    filas = `<tr><td colspan="4" class="muted">Sin registros todavía.</td></tr>`;
-  }
-
-  // Cabecera: el navegador interpreta el cuerpo como HTML en UTF-8
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-
-  /*
-   * Plantilla HTML embebida (template literal con `...${variable}...`):
-   * - ${statusClass}, ${statusText}, ${hintHtml}: estado de MongoDB
-   * - ${msgBanner}: mensajes tras guardar/borrar o error
-   * - ${filas}: filas de la tabla generadas arriba
-   * - ${result.ok}: deshabilita el botón del formulario si no hay conexión
-   * El bloque <style> define colores y layout; no cambia la lógica del servidor.
-   */
-  res.send(`<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Personas — MongoDB</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, Segoe UI, sans-serif;
-      margin: 0;
-      min-height: 100vh;
-      padding: 1.5rem;
-      background: #0f1419;
-      color: #e7e9ea;
-    }
-    .wrap { max-width: 36rem; margin: 0 auto; }
-    .card {
-      padding: 1.5rem 1.75rem;
-      border-radius: 12px;
-      background: #1a2332;
-      border: 1px solid #2f3b4d;
-      margin-bottom: 1.25rem;
-    }
-    h1 {
-      font-size: 1.35rem;
-      font-weight: 600;
-      margin: 0 0 0.75rem;
-    }
-    h2 {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin: 0 0 1rem;
-    }
-    .status {
-      font-size: 1rem;
-      line-height: 1.5;
-      padding: 0.65rem 0.85rem;
-      border-radius: 8px;
-    }
-    .status.ok { background: #0d2818; color: #3ecf8e; border: 1px solid #1f4d2f; }
-    .status.error { background: #2a1515; color: #f87171; border: 1px solid #5c2626; }
-    .hint {
-      margin: 0.75rem 0 0;
-      font-size: 0.88rem;
-      line-height: 1.45;
-      color: #8b98a5;
-    }
-    label { display: block; margin-bottom: 0.35rem; font-size: 0.9rem; color: #c4cdd6; }
-    input[type="text"], input[type="date"] {
-      width: 100%;
-      padding: 0.55rem 0.65rem;
-      border-radius: 8px;
-      border: 1px solid #3d4f66;
-      background: #0f1419;
-      color: #e7e9ea;
-      margin-bottom: 1rem;
-      font-size: 1rem;
-    }
-    button {
-      padding: 0.55rem 1.1rem;
-      border-radius: 8px;
-      border: none;
-      background: #1d9bf0;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-    button:hover { filter: brightness(1.08); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .banner { padding: 0.65rem 0.85rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.95rem; }
-    .banner.ok { background: #0d2818; color: #3ecf8e; border: 1px solid #1f4d2f; }
-    .banner.error { background: #2a1515; color: #f87171; border: 1px solid #5c2626; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-    th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid #2f3b4d; }
-    th { color: #8b98a5; font-weight: 600; }
-    .muted { color: #8b98a5; font-style: italic; }
-    .td-acc { vertical-align: middle; white-space: nowrap; }
-    .row-del { display: inline; margin: 0; }
-    .btn-del {
-      padding: 0.35rem 0.65rem;
-      font-size: 0.8rem;
-      background: #7f1d1d;
-      border: 1px solid #991b1b;
-    }
-    .btn-del:hover { filter: brightness(1.12); }
-    .api-hint {
-      margin-top: 1rem;
-      font-size: 0.82rem;
-      color: #8b98a5;
-      line-height: 1.5;
-    }
-    code { font-size: 0.85em; background: #0f1419; padding: 0.15rem 0.35rem; border-radius: 4px; }
-    .top-nav {
-      margin-bottom: 1rem;
-      font-size: 0.92rem;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 0.35rem 0.75rem;
-    }
-    .top-nav a { color: #1d9bf0; text-decoration: none; }
-    .top-nav a:hover { text-decoration: underline; }
-    .top-nav .sep { color: #3d4f66; user-select: none; }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <nav class="top-nav" aria-label="Secciones del proyecto">
-      <a href="/">Inicio</a>
-      <span class="sep">·</span>
-      <a href="/simulador">Simulador Postman</a>
-      <span class="sep">·</span>
-      <a href="/metricas">Estimación MongoDB</a>
-    </nav>
-    <div class="card">
-      <h1>Estado de la conexión</h1>
-      <p class="status ${statusClass}">${escapeHtml(statusText)}</p>
-      ${hintHtml}
-    </div>
-    ${msgBanner}
-    <div class="card">
-      <h2>Registrar persona</h2>
-      <form method="post" action="/personas">
-        <label for="nombre">Nombre</label>
-        <input type="text" id="nombre" name="nombre" required maxlength="120" autocomplete="name" placeholder="Tu nombre">
-        <label for="fechaNacimiento">Fecha de nacimiento</label>
-        <input type="date" id="fechaNacimiento" name="fechaNacimiento" required>
-        <button type="submit" ${result.ok ? "" : "disabled"}>Calcular edad y guardar</button>
-      </form>
-      ${result.ok ? `<p class="hint">Los datos se guardan en la base <strong>${escapeHtml(DB_NAME)}</strong>, colección <strong>${escapeHtml(COL_PERSONAS)}</strong>.</p>` : `<p class="hint">Conecta Atlas para habilitar el envío.</p>`}
-    </div>
-    <div class="card">
-      <h2>Últimos registros</h2>
-      <table>
-        <thead><tr><th>Nombre</th><th>Fecha nac.</th><th>Edad</th><th>Acciones</th></tr></thead>
-        <tbody>${filas}</tbody>
-      </table>
-      <p class="api-hint">API REST (Postman): <code>GET</code> <code>/api/personas</code> · <code>POST</code> <code>/api/personas</code> (JSON) · <code>DELETE</code> <code>/api/personas/:id</code></p>
-    </div>
-  </div>
-</body>
-</html>`);
-});
 
 /**
  * Convierte un documento MongoDB a JSON plano: fechas en ISO string y _id como texto
@@ -831,9 +755,52 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
+/** HTML 404 con el mismo menú y tema que el resto del laboratorio */
+function sendHtml404(res) {
+  res.status(404).type("html").send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <title>No encontrado — Aprende MongoDB</title>
+  <link rel="stylesheet" href="/css/aprendizaje.css">
+</head>
+<body class="app-body" data-page="none">
+  <div id="site-header-mount"></div>
+  <main class="layout-main layout-main--narrow">
+    <div class="card">
+      <h1>Página no encontrada</h1>
+      <p class="lead">Esa ruta no existe en este proyecto. Usa el menú superior o la ruta de aprendizaje.</p>
+      <p class="course-intro">
+        <a href="/curso.html">Mapa del curso</a>
+        · <a href="/">Laboratorio</a>
+        · <a href="/simulador">Simulador</a>
+        · <a href="/metricas">Métricas</a>
+        · <a href="/cierre">Cierre</a>
+      </p>
+    </div>
+  </main>
+  <script src="/js/site-nav.js" defer></script>
+</body>
+</html>`);
+}
+
+app.use((req, res) => {
+  const wantsHtml = req.method === "GET" && req.accepts("html") && !req.path.startsWith("/api");
+  if (wantsHtml) {
+    sendHtml404(res);
+    return;
+  }
+  res.status(404).json({ ok: false, error: "Not found" });
+});
+
 // Escucha peticiones HTTP en el puerto indicado; el callback se ejecuta una vez al arrancar
 app.listen(port, () => {
   console.log(`Servidor en http://localhost:${port}`);
-  console.log(`Simulador didáctico: http://localhost:${port}/simulador`);
-  console.log(`Métricas / estimación: http://localhost:${port}/metricas`);
+  console.log(`Mapa del curso (Bloom): http://localhost:${port}/curso.html · alias http://localhost:${port}/curso`);
+  console.log(`Laboratorio CRUD: http://localhost:${port}/`);
+  console.log(`Simulador HTTP: http://localhost:${port}/simulador`);
+  console.log(`Análisis y métricas: http://localhost:${port}/metricas`);
+  console.log(`Cierre (Fase 5 Bloom): http://localhost:${port}/cierre`);
 });

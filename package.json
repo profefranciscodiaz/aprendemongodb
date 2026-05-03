@@ -1,13 +1,13 @@
 {
   "name": "proyect_db",
   "version": "1.0.0",
-  "description": "Demo conexión MongoDB Atlas",
+  "description": "Laboratorio educativo MongoDB (Bloom): CRUD, HTTP, análisis de datos y métricas",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": [],
+  "keywords": ["mongodb", "education", "bloom", "express", "atlas", "analytics"],
   "license": "ISC",
   "dependencies": {
     "bson": "^7.2.0",

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Mapa del curso: cinco fases alineadas a Bloom (Recordar → Crear), RA y enlaces a mapa, simulador, laboratorio, métricas y cierre.">
+  <title>Mapa del curso — Fases Bloom y MongoDB multimedia</title>
+  <link rel="stylesheet" href="/css/aprendizaje.css">
+</head>
+<body class="app-body" data-page="curso">
+  <div id="site-header-mount"></div>
+
+  <main class="layout-main layout-main--wide" id="contenido-principal">
+    <h1>Curso en cinco fases — misma progresión que Bloom</h1>
+    <p class="lead">
+      Cada <strong>fase</strong> del curso corresponde a un tramo de la <strong>taxonomía de Bloom</strong>, en orden creciente de exigencia cognitiva.
+      La barra superior reproduce ese orden en la plataforma: <strong>Mapa → Simulador → Laboratorio → Métricas → Cierre</strong>.
+      Los <strong>RA</strong> se distribuyen a lo largo de las fases; este mapa orienta y la <a href="/cierre">página de cierre</a> concentra la entrega final (Fase 5).
+    </p>
+
+    <div class="cta-row" role="group" aria-label="Ir a las fases 2 a 5">
+      <a class="cta cta-primary" href="/simulador">Fase 2 · Simulador</a>
+      <a class="cta cta-sec" href="/">Fase 3 · Laboratorio</a>
+      <a class="cta cta-sec" href="/metricas">Fase 4 · Métricas</a>
+      <a class="cta cta-sec" href="/cierre">Fase 5 · Cierre</a>
+    </div>
+
+    <div class="card">
+      <span class="tag-bloom">Secuencia Bloom ↔ Plataforma</span>
+      <h2>Las cinco fases y dónde trabajas cada una</h2>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th scope="col">Fase</th>
+            <th scope="col">Bloom (énfasis)</th>
+            <th scope="col">Pantalla</th>
+            <th scope="col">Qué haces</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="phase-tag">1</span></td>
+            <td><strong>Recordar</strong></td>
+            <td><strong>Mapa</strong> (esta página)</td>
+            <td>Nombrar conceptos (SQL/NoSQL, colección, documento, API); fijar vocabulario y línea base del proyecto multimedia.</td>
+          </tr>
+          <tr>
+            <td><span class="phase-tag">2</span></td>
+            <td><strong>Comprender</strong></td>
+            <td><a href="/simulador">Simulador</a></td>
+            <td>Explicar métodos HTTP, URI/URL, petición/respuesta; relacionar el API con la base documental.</td>
+          </tr>
+          <tr>
+            <td><span class="phase-tag">3</span></td>
+            <td><strong>Aplicar</strong></td>
+            <td><a href="/">Laboratorio</a></td>
+            <td>Ejecutar CRUD en vivo, JSON y formularios; usar la misma API que practicaste en el simulador.</td>
+          </tr>
+          <tr>
+            <td><span class="phase-tag">4</span></td>
+            <td><strong>Analizar y evaluar</strong></td>
+            <td><a href="/metricas">Métricas</a></td>
+            <td>Descomponer planes de consulta (<code>explain</code>), estadísticas BSON/disco; juzgar eficiencia e índices con evidencias.</td>
+          </tr>
+          <tr>
+            <td><span class="phase-tag">5</span></td>
+            <td><strong>Evaluar y crear</strong></td>
+            <td><a href="/cierre">Cierre</a></td>
+            <td>Valorar la solución global (seguridad, desempeño) y crear informe + vídeo colaborativo y entregables finales.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <span class="tag-bloom">Resultados de aprendizaje</span>
+      <h2>Al cierre del curso académico</h2>
+      <ol class="ra-list">
+        <li>
+          <strong>RA1 · Analizar</strong>
+          Analizar estructuras de almacenamiento NoSQL aplicadas a proyectos multimedia, comparando requerimientos de capacidad, latencia y volumen de datos a partir del análisis de métricas técnicas, para sustentar la selección de la arquitectura de datos más adecuada.
+          <span class="text-muted-small"><br><em>Se trabaja con fuerza en Fase 4 y se argumenta en Fase 5.</em></span>
+        </li>
+        <li>
+          <strong>RA2 · Modelar</strong>
+          Modelar estructuras de bases de datos documentales en MongoDB, mediante la estimación de costos de consulta y la proyección de volumen de almacenamiento, para optimizar la eficiencia técnica y la escalabilidad del sistema.
+          <span class="text-muted-small"><br><em>Fases 3–4 (modelo en uso + métricas).</em></span>
+        </li>
+        <li>
+          <strong>RA3 · Construir y evaluar</strong>
+          Construir una API RESTful integrada a una base de datos documental para un proyecto multimedia, evaluando su desempeño a partir de métricas técnicas de funcionamiento, con el fin de justificar decisiones técnicas de diseño y arquitectura de la solución desarrollada.
+          <span class="text-muted-small"><br><em>Fases 2–3 (API) y cierre en Fases 4–5.</em></span>
+        </li>
+      </ol>
+    </div>
+
+    <div class="card" id="fase-1">
+      <p class="u-mb-0"><span class="phase-tag">Fase 1</span></p>
+      <h2 class="u-mt-sm">Recordar · Conceptos y comparación SQL / NoSQL</h2>
+      <p class="text-muted-block">
+        Bloom <strong>Recordar</strong>: recuperar el vocabulario esencial y las diferencias estructurales antes de entrar al simulador y al laboratorio.
+      </p>
+      <div class="infographic-vs" aria-label="Comparación SQL frente a NoSQL">
+        <div class="infographic-vs__col box">
+          <strong>SQL (relacional)</strong>
+          <ul class="u-mt-sm u-mb-0">
+            <li><strong>Estructura:</strong> tablas, filas, columnas; esquema fijo en lo habitual.</li>
+            <li><strong>Ventajas:</strong> integridad referencial madura; transacciones ACID fuertes en muchos motores; SQL estándar.</li>
+            <li><strong>Limitaciones:</strong> cambios de esquema costosos; menos flexibilidad para datos semi-estructurados o muy heterogéneos.</li>
+          </ul>
+        </div>
+        <div class="infographic-vs__mid" aria-hidden="true">vs</div>
+        <div class="infographic-vs__col box">
+          <strong>NoSQL documental (p. ej. MongoDB)</strong>
+          <ul class="u-mt-sm u-mb-0">
+            <li><strong>Estructura:</strong> colecciones de documentos BSON/JSON; esquema flexible por documento.</li>
+            <li><strong>Ventajas:</strong> evolución rápida del modelo; buen encaje con APIs JSON y contenidos multimedia heterogéneos.</li>
+            <li><strong>Limitaciones:</strong> disciplina de diseño; índices y consultas mal alineados impactan latencia y costo.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="proj-example">
+        <strong>Proyecto multimedia ejemplo (línea base):</strong>
+        «Diseño y modelado de bases de datos NoSQL para proyectos multimedia» — delimita actores, tipos de medio (audio, vídeo, imagen, metadatos),
+        volumen esperado y SLAs. Tu informe debe <strong>justificar</strong> por qué el modelo documental encaja mejor que el relacional para ese caso.
+      </div>
+      <div class="callout">
+        <strong>Siguiente paso cognitivo:</strong> Fase 2 en el <a href="/simulador">simulador</a> (Comprender cómo se comporta HTTP frente a tu API).
+      </div>
+    </div>
+
+    <div class="card" id="fase-3-detalle">
+      <p class="u-mb-0"><span class="phase-tag">Fase 3</span></p>
+      <h2 class="u-mt-sm">Aplicar · Modelo documental en acción</h2>
+      <p class="text-muted-block">
+        Bloom <strong>Aplicar</strong>: llevas el modelo a la práctica con CRUD y la API REST del proyecto. El laboratorio usa la colección <code>personas</code>; en tu informe extrapola a colecciones multimedia (ej. <code>activos_multimedia</code>).
+      </p>
+      <div class="doc-viz" aria-label="Ejemplo visual: una colección con tres documentos">
+        <header class="doc-viz__head">
+          <span class="doc-viz__badge">Colección</span>
+          <code class="doc-viz__name">activos_multimedia</code>
+          <p class="doc-viz__caption">
+            Cada bloque es un <strong>documento</strong>; campos clave → valor (BSON). Estructura semántica compartida con variaciones opcionales entre documentos.
+          </p>
+        </header>
+        <div class="doc-viz__grid">
+          <article class="mongo-doc">
+            <p class="mongo-doc__id"><code>_id</code> · ObjectId("65a1…e01")</p>
+            <dl class="mongo-doc__kv">
+              <dt>proyecto_id</dt>
+              <dd><code>"PROY-MM-2026"</code></dd>
+              <dt>tipo_medio</dt>
+              <dd><code>"video"</code></dd>
+              <dt>titulo</dt>
+              <dd><code>"Entrega documental — corto"</code></dd>
+              <dt>duracion_seg</dt>
+              <dd><code>420</code></dd>
+              <dt>codec</dt>
+              <dd><code>"h264"</code></dd>
+              <dt>tamano_bytes_estimado</dt>
+              <dd><code>52428800</code></dd>
+            </dl>
+          </article>
+          <article class="mongo-doc">
+            <p class="mongo-doc__id"><code>_id</code> · ObjectId("65a1…e02")</p>
+            <dl class="mongo-doc__kv">
+              <dt>proyecto_id</dt>
+              <dd><code>"PROY-MM-2026"</code></dd>
+              <dt>tipo_medio</dt>
+              <dd><code>"audio_podcast"</code></dd>
+              <dt>titulo</dt>
+              <dd><code>"Episodio 3 — entrevistas"</code></dd>
+              <dt>canales</dt>
+              <dd><code>2</code> (estéreo)</dd>
+              <dt>bitrate_kbps</dt>
+              <dd><code>192</code></dd>
+            </dl>
+          </article>
+          <article class="mongo-doc">
+            <p class="mongo-doc__id"><code>_id</code> · ObjectId("65a1…e03")</p>
+            <dl class="mongo-doc__kv">
+              <dt>proyecto_id</dt>
+              <dd><code>"PROY-MM-2026"</code></dd>
+              <dt>tipo_medio</dt>
+              <dd><code>"imagen"</code></dd>
+              <dt>titulo</dt>
+              <dd><code>"Poster promocional"</code></dd>
+              <dt>ancho_px</dt>
+              <dd><code>1920</code></dd>
+              <dt>alto_px</dt>
+              <dd><code>1080</code></dd>
+              <dt>metadatos_exif</dt>
+              <dd>Objeto embebido con fecha captura y orientación.</dd>
+            </dl>
+          </article>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>Práctica:</strong> implementa el CRUD en el <a href="/">laboratorio</a>. Las mismas rutas <code>/api/personas</code> las puedes ensayar antes en el <a href="/simulador">simulador</a> (Fase 2).
+        Para costos y almacenamiento acude a <a href="/metricas">métricas</a> (Fase 4).
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="tag-bloom">Pirámide del curso (5 fases = 5 franjas)</span>
+      <h2>De Recordar a Crear</h2>
+      <p class="pyramid-caption">
+        La <strong>base ancha</strong> es la Fase 1 (<strong>Recordar</strong>); la <strong>cima</strong> es la Fase 5 (<strong>Evaluar y crear</strong>).
+        Cada franja enlaza la pantalla donde desarrollas ese nivel con mayor intensidad.
+      </p>
+      <div class="bloom-pyramid" aria-label="Cinco fases Bloom de la base a la cima">
+        <div class="bloom-row l1">
+          <strong>Fase 1 · Recordar</strong>
+          Vocabulario SQL/NoSQL, colección, documento, API. Origen: este mapa.
+        </div>
+        <div class="bloom-row l2">
+          <strong>Fase 2 · Comprender</strong>
+          Explicar HTTP, métodos, URI y flujo petición–respuesta.
+          <br>
+          <a href="/simulador">Ir al simulador</a>
+        </div>
+        <div class="bloom-row l3">
+          <strong>Fase 3 · Aplicar</strong>
+          CRUD en MongoDB y uso de la API en contexto real.
+          <br>
+          <a href="/">Ir al laboratorio</a>
+        </div>
+        <div class="bloom-row l4">
+          <strong>Fase 4 · Analizar y evaluar</strong>
+          <code>explain</code>, BSON, índices, lectura de gráficos y juicio técnico.
+          <br>
+          <a href="/metricas">Ir a métricas</a>
+        </div>
+        <div class="bloom-row l5">
+          <strong>Fase 5 · Evaluar y crear</strong>
+          Informe, vídeo colaborativo, síntesis y extensiones del proyecto.
+          <br>
+          <a href="/cierre">Ir al cierre del curso</a>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>RA en resumen:</strong> <strong>RA3</strong> se construye desde Comprender–Aplicar (API); <strong>RA1–RA2</strong> desde Analizar–evaluar (métricas); la Fase 5 integra los tres en el entregable final.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Competencias numéricas (Fase 4)</h2>
+      <p class="course-intro u-mt-0">
+        Lectura de magnitudes, ratios y representación — coherente con Bloom <strong>Analizar y evaluar</strong>.
+      </p>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th scope="col">Competencia</th>
+            <th scope="col">Ejemplo en esta app</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lectura de magnitudes</td>
+            <td><code>avgObjSize</code>, <code>storageSize</code>, gráficos BSON</td>
+          </tr>
+          <tr>
+            <td>Ratios y eficiencia</td>
+            <td>Docs examinados vs devueltos; índices vs datos</td>
+          </tr>
+          <tr>
+            <td>Proyección</td>
+            <td>Nuevos documentos × tamaño medio + índices</td>
+          </tr>
+          <tr>
+            <td>Representación</td>
+            <td>Chart.js: anillo, barras, plan de consulta</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Módulos de la plataforma (orden Bloom)</h2>
+      <ol class="module-ol">
+        <li><strong><a href="/curso.html">Mapa</a></strong> — Fase 1 · Recordar.</li>
+        <li><strong><a href="/simulador">Simulador</a></strong> — Fase 2 · Comprender.</li>
+        <li><strong><a href="/">Laboratorio</a></strong> — Fase 3 · Aplicar.</li>
+        <li><strong><a href="/metricas">Métricas</a></strong> — Fase 4 · Analizar y evaluar.</li>
+        <li><strong><a href="/cierre">Cierre</a></strong> — Fase 5 · Evaluar y crear.</li>
+      </ol>
+      <h3>Ampliación profesional</h3>
+      <ul>
+        <li>GridFS: <code>fs.files</code> vs <code>fs.chunks</code> para binarios pesados.</li>
+        <li>Agregaciones (<code>$group</code>, etc.) como actividad <strong>Crear</strong> sobre datos reales.</li>
+        <li>Rúbricas alineadas a cada fase Bloom.</li>
+      </ul>
+    </div>
+
+    <p class="page-foot">
+      <code>npm start</code> · Mapa: <code>/curso.html</code> o <code>/curso</code> · Cinco fases = cinco niveles Bloom en secuencia · Cierre: <code>/cierre</code>
+    </p>
+  </main>
+  <script src="/js/site-nav.js" defer></script>
+</body>
+</html>
