@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estimación MongoDB — Costos, BSON e índices</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, "Segoe UI", sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #0f1419;
+      color: #e7e9ea;
+      line-height: 1.5;
+    }
+    a { color: #1d9bf0; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .nav-top {
+      padding: 0.75rem 1.5rem;
+      background: #1a2332;
+      border-bottom: 1px solid #2f3b4d;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.85rem;
+    }
+    .nav-top .muted { font-size: 0.88rem; color: #8b98a5; }
+    .layout {
+      max-width: 56rem;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem 2.5rem;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+    }
+    .lead { color: #8b98a5; font-size: 0.95rem; margin-bottom: 1.25rem; }
+    .card {
+      background: #1a2332;
+      border: 1px solid #2f3b4d;
+      border-radius: 12px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    h2 { font-size: 1.05rem; margin: 0 0 0.75rem; color: #c4cdd6; }
+    h3 { font-size: 0.95rem; margin: 0.85rem 0 0.45rem; color: #8b98a5; }
+    h4 { font-size: 0.88rem; margin: 0.65rem 0 0.35rem; color: #c4cdd6; font-weight: 600; }
+    p, li { font-size: 0.92rem; color: #c4cdd6; }
+    ul, ol { margin: 0.35rem 0 0.6rem 1.1rem; padding: 0; }
+    ol.step-list li { margin-bottom: 0.45rem; }
+    code, .mono {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.86em;
+      background: #0f1419;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+    }
+    details.method {
+      border: 1px solid #2f3b4d;
+      border-radius: 10px;
+      margin-bottom: 0.55rem;
+      background: #121a24;
+    }
+    details.method summary {
+      cursor: pointer;
+      padding: 0.65rem 0.9rem;
+      font-weight: 600;
+      color: #e7e9ea;
+      font-size: 0.92rem;
+    }
+    details.method[open] summary { border-bottom: 1px solid #2f3b4d; }
+    .method-body { padding: 0.65rem 1rem 1rem; }
+    table.stat {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .stat th, .stat td {
+      text-align: left;
+      padding: 0.45rem 0.35rem;
+      border-bottom: 1px solid #2f3b4d;
+      vertical-align: top;
+    }
+    .stat th { color: #8b98a5; width: 42%; }
+    button.btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #1d9bf0;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button.btn:hover { filter: brightness(1.06); }
+    button.btn:disabled { opacity: 0.5; cursor: wait; }
+    button.btn-sec {
+      background: #243044;
+      border: 1px solid #3d4f66;
+      color: #c4cdd6;
+    }
+    label.lbl {
+      display: block;
+      font-size: 0.82rem;
+      color: #8b98a5;
+      margin-bottom: 0.35rem;
+    }
+    textarea.json-in {
+      width: 100%;
+      min-height: 5rem;
+      padding: 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #3d4f66;
+      background: #0f1419;
+      color: #eecf9f;
+      font-family: inherit;
+      font-size: 0.85rem;
+      resize: vertical;
+    }
+    input.num-in {
+      width: 100%;
+      max-width: 12rem;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid #3d4f66;
+      background: #0f1419;
+      color: #e7e9ea;
+    }
+    .row-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 0.75rem 0;
+    }
+    .banner {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      margin-bottom: 0.75rem;
+      font-size: 0.9rem;
+    }
+    .banner.err {
+      background: #2a1515;
+      color: #f87171;
+      border: 1px solid #5c2626;
+    }
+    .banner.ok {
+      background: #0d2818;
+      color: #3ecf8e;
+      border: 1px solid #1f4d2f;
+    }
+    pre.out {
+      margin: 0;
+      padding: 0.75rem;
+      background: #0a0e12;
+      border-radius: 8px;
+      border: 1px solid #2f3b4d;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      color: #b8c5d3;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 22rem;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      background: #243044;
+      border: 1px solid #3d4f66;
+      color: #c4cdd6;
+      margin-right: 0.35rem;
+      margin-bottom: 0.35rem;
+    }
+    .grid-2 {
+      display: grid;
+      gap: 0.75rem;
+    }
+    @media (min-width: 640px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+    .chart-grid {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 0.75rem;
+    }
+    @media (min-width: 720px) {
+      .chart-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .chart-wrap {
+      background: #121a24;
+      border: 1px solid #2f3b4d;
+      border-radius: 10px;
+      padding: 0.85rem;
+    }
+    .chart-wrap h3 {
+      margin: 0 0 0.65rem;
+      font-size: 0.88rem;
+      color: #c4cdd6;
+    }
+    .chart-wrap canvas {
+      max-height: 260px;
+    }
+    .chart-note {
+      font-size: 0.78rem;
+      color: #8b98a5;
+      margin: 0.5rem 0 0;
+      line-height: 1.4;
+    }
+    #chartsCard.hidden { display: none; }
+    .callout {
+      border-left: 3px solid #1d9bf0;
+      padding: 0.5rem 0.75rem;
+      margin: 0.65rem 0;
+      background: #0f1419;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.88rem;
+      color: #c4cdd6;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav-top" aria-label="Secciones del proyecto">
+    <a href="/">Inicio</a>
+    <span style="color:#3d4f66">|</span>
+    <a href="/simulador">Simulador Postman</a>
+    <span style="color:#3d4f66">|</span>
+    <span class="muted">Estimación MongoDB (esta página)</span>
+  </nav>
+
+  <div class="layout">
+    <h1>Estimación para bases de datos multimedia en MongoDB</h1>
+    <p class="lead">
+      Lectura en vivo de tu colección <code>personas</code>: <strong>costo de consulta</strong> (<code>explain</code>),
+      <strong>proyección de almacenamiento</strong> (<code>collStats</code>),
+      <strong>estrategias de indexación</strong> y <strong>tamaño BSON</strong>.
+      Abajo tienes la <strong>guía detallada</strong> de cómo hacer cada análisis, <strong>gráficos</strong> basados en tus datos
+      y cómo <strong>reutilizar el mismo enfoque gráfico</strong> en otros estudios.
+    </p>
+
+    <div id="globalErr" class="banner err" style="display:none"></div>
+
+    <div class="card">
+      <h2>Cómo deben hacerse estos análisis (metodología)</h2>
+      <p style="margin-top:0;font-size:0.9rem;color:#c4cdd6;">
+        Cada bloque resume el <strong>objetivo</strong>, los <strong>pasos reproducibles</strong>, las <strong>métricas</strong> que debes anotar
+        y los <strong>errores habituales</strong>. En laboratorio se recomienda repetir mediciones tras cambiar índices o volumen de datos
+        y guardar capturas de <code>explain</code> y <code>collStats</code> para comparar versiones.
+      </p>
+
+      <details class="method" open>
+        <summary>1. Almacenamiento y <code>collStats</code></summary>
+        <div class="method-body">
+          <p><strong>Objetivo.</strong> Cuantificar cuánto ocupan los documentos frente a los índices y estimar crecimiento.</p>
+          <ol class="step-list">
+            <li>Fija el contexto: base de datos (<code>DB_NAME</code>) y colección (aquí <code>personas</code>). En multimedia sueles repetir el proceso para metadatos y para GridFS (<code>fs.files</code>, <code>fs.chunks</code>).</li>
+            <li>Ejecuta estadísticas de colección. En <code>mongosh</code>: <code>db.personas.aggregate([{ $collStats: {} }])</code> o <code>db.runCommand({ collStats: "personas" })</code>. Esta página llama al mismo comando vía API.</li>
+            <li>Anota <code>count</code>, <code>size</code> (bytes lógicos de datos sin contar índices), <code>avgObjSize</code>, <code>storageSize</code> (espacio asignado en disco, incluye fragmentación/padding) y <code>totalIndexSize</code>.</li>
+            <li>Interpreta: si <code>storageSize</code> ≫ <code>size</code>, puede haber fragmentación o eliminaciones recientes; un <code>compact</code> (con cuidado en producción) o la compactación natural tras reescrituras puede cambiar el ratio.</li>
+            <li>Para <strong>proyección</strong>, usa <code>avgObjSize × documentos_nuevos</code> como primera aproximación y suma el overhead de índices (ratio observado <code>totalIndexSize / size</code> o un porcentaje acordado en tu informe).</li>
+          </ol>
+          <div class="callout">
+            <strong>Documentación útil:</strong> manual MongoDB «collStats» — revisa definiciones exactas de cada campo según tu versión del servidor.
+          </div>
+        </div>
+      </details>
+
+      <details class="method">
+        <summary>2. Tamaño BSON por documento</summary>
+        <div class="method-body">
+          <p><strong>Objetivo.</strong> Entender la dispersión del peso de cada registro (campos opcionales, strings largos, arrays de referencias a multimedia).</p>
+          <ol class="step-list">
+            <li>Obtén una <strong>muestra representativa</strong>: no solo los últimos insertados, salvo que tu caso de uso sea solo “recientes”. Para otro estudio puedes usar <code>$sample</code> en una agregación.</li>
+            <li>Mide el BSON serializado. En Node se usa <code>calculateObjectSize(doc)</code> del paquete <code>bson</code> (lo que hace el servidor internamente es coherente con el tamaño en wire protocol).</li>
+            <li>Compara el <strong>promedio muestral</strong> con <code>avgObjSize</code> de <code>collStats</code>: si difieren mucho, la muestra puede no ser representativa o hay documentos históricos con esquema distinto.</li>
+            <li>En multimedia, separa conceptualmente <strong>metadatos</strong> (BSON pequeño) del <strong>binario</strong> almacenado en GridFS o fuera del documento; el tamaño del documento de metadatos no incluye los chunks.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="method">
+        <summary>3. Estrategias de indexación</summary>
+        <div class="method-body">
+          <p><strong>Objetivo.</strong> Alinear índices con los filtros (<code>find</code>), ordenaciones (<code>sort</code>) y proyecciones más frecuentes.</p>
+          <ol class="step-list">
+            <li>Inventaria índices: <code>db.personas.getIndexes()</code> o la salida de esta página.</li>
+            <li>Para cada consulta crítica, ejecuta <code>explain("executionStats")</code> y verifica si aparece <strong>IXSCAN</strong> sobre el índice esperado o <strong>COLLSCAN</strong>.</li>
+            <li>Reglas prácticas: igualdad antes que rango en índices compuestos; un índice que sirva a filtro + orden reduce costes de memoria en <code>SORT</code>; índices redundantes duplican coste de escritura.</li>
+            <li>Texto completo o búsquedas semánticas en multimedia suelen requerir índice <code>text</code> o Atlas Search — documenta la alternativa elegida en tu análisis.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="method">
+        <summary>4. Costo de consulta — <code>explain("executionStats")</code></summary>
+        <div class="method-body">
+          <p><strong>Objetivo.</strong> Estimar el trabajo real del motor para una consulta concreta antes de escalar datos.</p>
+          <ol class="step-list">
+            <li>Replica la consulta real: mismo <strong>filtro</strong>, <strong>orden</strong>, <strong>proyección</strong> y <strong>límite</strong>. Cambiar cualquiera puede cambiar el plan.</li>
+            <li>Pide modo <code>executionStats</code> (no basta solo con <code>queryPlanner</code> si quieres números ejecutados en esta corrida).</li>
+            <li>Lee en primer lugar: <code>executionTimeMillis</code>, <code>nReturned</code>, <code>totalDocsExamined</code>, <code>totalKeysExamined</code>. Idealmente <code>totalDocsExamined</code> cercano a <code>nReturned</code> cuando el filtro es selectivo.</li>
+            <li>Inspecciona el árbol de etapas en <code>winningPlan</code>: busca <code>COLLSCAN</code>, <code>IXSCAN</code>, <code>FETCH</code>, <code>SORT</code>. Un <code>SORT</code> sin índice adecuado puede ser costoso en RAM.</li>
+            <li>Repite tras crear o eliminar un índice y documenta la diferencia (antes/después). Eso es evidencia cuantitativa para tu memoria.</li>
+          </ol>
+          <div class="callout">
+            Las métricas de <code>explain</code> son para el estado actual del cluster y del tamaño de colección; extrapolar a millones de documentos requiere pruebas de carga o modelos más elaborados.
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Resumen cuantitativo y cualitativo</h2>
+      <p style="margin-top:0;font-size:0.88rem;color:#8b98a5;">
+        Pulsa «Cargar desde la base» para ejecutar <code>collStats</code>, listar índices y medir BSON en los últimos documentos.
+      </p>
+      <div class="row-actions">
+        <button type="button" class="btn" id="btnResumen">Cargar desde la base</button>
+      </div>
+      <div id="resumenArea"></div>
+    </div>
+
+    <div class="card hidden" id="chartsCard">
+      <h2>Gráficos estadísticos (datos de la última carga)</h2>
+      <p style="margin-top:0;font-size:0.88rem;color:#8b98a5;">
+        Los gráficos se generan con <a href="https://www.chartjs.org/" target="_blank" rel="noopener">Chart.js</a> a partir del JSON del servidor.
+        Sirven para comparar visualmente <strong>peso de datos vs índices</strong>, <strong>tamaño por índice</strong> y <strong>distribución de tamaños BSON</strong> en la muestra.
+      </p>
+      <div class="chart-grid">
+        <div class="chart-wrap">
+          <h3>Datos (<code>size</code>) vs índices (<code>totalIndexSize</code>)</h3>
+          <canvas id="chartDataVsIndex" aria-label="Gráfico circular datos versus índices"></canvas>
+          <p class="chart-note">Compara volumen lógico de documentos frente al espacio de índices. No incluye otros overhead del cluster.</p>
+        </div>
+        <div class="chart-wrap">
+          <h3>Tamaño por índice (<code>indexSizes</code>)</h3>
+          <canvas id="chartIndexSizes" aria-label="Gráfico de barras por índice"></canvas>
+          <p class="chart-note">Cada barra es un índice físico. El nombre viene del servidor (<code>_id_</code>, compuestos, etc.).</p>
+        </div>
+        <div class="chart-wrap" style="grid-column: 1 / -1;">
+          <h3>Muestra BSON por documento (últimos registros)</h3>
+          <canvas id="chartBsonSample" aria-label="Gráfico de barras tamaño BSON"></canvas>
+          <p class="chart-note">Etiquetas acortadas (<code>_id</code>). El tooltip muestra el valor exacto en bytes.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Proyección de almacenamiento</h2>
+      <p style="margin-top:0;font-size:0.88rem;color:#8b98a5;">
+        Fórmula orientativa: <code>bytes nuevos ≈ documentos nuevos × avgObjSize</code> (datos);
+        los índices añaden overhead por campo indexado. En multimedia con <strong>GridFS</strong>, suma colecciones
+        <code>fs.files</code> y <code>fs.chunks</code> más sus índices.
+      </p>
+      <div class="grid-2">
+        <div>
+          <label class="lbl" for="extraDocs">Documentos adicionales estimados</label>
+          <input class="num-in" id="extraDocs" type="number" min="0" step="1" value="10000" aria-describedby="projHint">
+        </div>
+        <div>
+          <label class="lbl" for="extraIndexesPct">Overhead índices (% sobre datos nuevos)</label>
+          <input class="num-in" id="extraIndexesPct" type="number" min="0" step="1" value="35" aria-describedby="projHint">
+        </div>
+      </div>
+      <p id="projHint" style="font-size:0.82rem;color:#8b98a5;margin:0.5rem 0 0;">
+        En producción sustituye el porcentaje por el ratio medido <code>totalIndexSize / size</code> tras establecer todos los índices definitivos.
+      </p>
+      <h3>Resultado estimado</h3>
+      <pre class="out" id="projOut">Carga el resumen primero o introduce valores manualmente tras cargar.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Costo de consulta — <code>explain("executionStats")</code></h2>
+      <p style="margin-top:0;font-size:0.88rem;color:#8b98a5;">
+        Define un <code>find</code> sobre <code>personas</code>. Tras analizar, verás un gráfico que compara magnitudes del plan (escala normalizada para lectura comparativa).
+      </p>
+      <label class="lbl" for="fFilter">Filtro (JSON)</label>
+      <textarea class="json-in" id="fFilter" aria-label="Filtro JSON">{}</textarea>
+      <label class="lbl" for="fSort">Orden (JSON)</label>
+      <textarea class="json-in" id="fSort" aria-label="Orden JSON">{ "creadoEn": -1 }</textarea>
+      <label class="lbl" for="fProj">Proyección (JSON, opcional; vacío = todas las claves)</label>
+      <textarea class="json-in" id="fProj" aria-label="Proyección JSON placeholder"></textarea>
+      <label class="lbl" for="fLimit">Límite (máx. 100)</label>
+      <input class="num-in" id="fLimit" type="number" min="1" max="100" value="50">
+      <div class="row-actions">
+        <button type="button" class="btn" id="btnExplain">Analizar consulta</button>
+        <button type="button" class="btn btn-sec" id="btnExplainEj">Ejemplo: filtro por nombre</button>
+      </div>
+      <div class="chart-wrap" style="margin-top:1rem;display:none" id="explainChartWrap">
+        <h3>Métricas del plan (normalizadas al máximo = 100 %)</h3>
+        <canvas id="chartExplain" aria-label="Gráfico barras explain"></canvas>
+        <p class="chart-note">Los valores reales aparecen en la interpretación y en el JSON. La normalización evita que un número grande eclipse al resto en el dibujo.</p>
+      </div>
+      <h3>Interpretación breve</h3>
+      <div id="explainCual" style="font-size:0.9rem;color:#c4cdd6;"></div>
+      <h3>JSON completo</h3>
+      <pre class="out" id="explainOut">Sin datos todavía.</pre>
+    </div>
+
+    <div class="card">
+      <h2>Cómo crear estos gráficos para otros análisis</h2>
+      <p style="margin-top:0;font-size:0.92rem;color:#c4cdd6;">
+        El patrón es siempre el mismo: <strong>(1) obtener datos estructurados</strong> → <strong>(2) transformarlos a arrays</strong> para el gráfico → <strong>(3) elegir el tipo de visualización</strong> según la pregunta estadística.
+      </p>
+
+      <h4>Paso 1 — Origen de los datos</h4>
+      <ul>
+        <li><strong>API propia</strong> (como <code>/api/metricas/resumen</code>): encapsulas comandos MongoDB y devuelves JSON seguro para el navegador.</li>
+        <li><strong>Agregaciones</strong>: por ejemplo histograma de edades con <code>$bucket</code> o serie temporal de altas con <code>$group</code> por día sobre <code>creadoEn</code>.</li>
+        <li><strong>Exportación</strong>: CSV/JSON desde Compass o <code>mongoexport</code> y gráficos offline en Python (matplotlib) o Excel — la lógica de “labels + valores” es idéntica.</li>
+      </ul>
+
+      <h4>Paso 2 — Formato para Chart.js</h4>
+      <p>Un gráfico minimal necesita:</p>
+      <pre class="out" style="max-height:none;font-size:0.82rem;">{
+  type: 'bar',   // o 'line', 'doughnut', 'scatter'...
+  data: {
+    labels: ['A', 'B', 'C'],
+    datasets: [{ label: 'Serie 1', data: [12, 19, 3], backgroundColor: '#3ecf8e' }]
+  },
+  options: { responsive: true, plugins: { legend: { display: true } } }
+}</pre>
+      <p>Tu código debe mapear la respuesta del servidor a <code>labels</code> y <code>data</code>. Ejemplo: para índices, <code>labels = Object.keys(indexSizes)</code> y <code>data = Object.values(indexSizes)</code>.</p>
+
+      <h4>Paso 3 — Elegir tipo de gráfico</h4>
+      <ul>
+        <li><strong>Barras</strong>: comparar categorías (tamaño por índice, BSON por documento, rangos de tamaño de archivo).</li>
+        <li><strong>Líneas</strong>: evolución temporal (consultas/día, tamaño acumulado del bucket multimedia).</li>
+        <li><strong>Circular / anillo</strong>: partes de un total (datos vs índices; tipos MIME en metadatos).</li>
+        <li><strong>Scatter</strong>: relación entre dos variables continuas (duración de consulta vs documentos examinados en benchmarks repetidos).</li>
+      </ul>
+
+      <h4>Buenas prácticas</h4>
+      <ul>
+        <li>Destruye la instancia anterior con <code>chart.destroy()</code> antes de crear otra sobre el mismo <code>&lt;canvas&gt;</code> (esta página lo hace).</li>
+        <li>Ajusta tooltips para mostrar unidades humanas (bytes, ms) como en <code>fmtBytes</code>.</li>
+        <li>Si los datos son muy desbalanceados, usa escala logarítmica o normalización (como en el gráfico de <code>explain</code>) y documenta la transformación en el informe.</li>
+      </ul>
+
+      <div class="callout">
+        <strong>Ejercicio sugerido:</strong> añade un endpoint que agrupe por día de la semana las inserciones y dibuja un gráfico de líneas reutilizando el mismo bloque <code>new Chart(...)</code> con otros <code>labels</code> y <code>data</code>.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+(function () {
+  function fmtBytes(n) {
+    if (n == null || Number.isNaN(n)) return "—";
+    var x = Number(n);
+    if (x < 1024) return x + " B";
+    if (x < 1024 * 1024) return (x / 1024).toFixed(2) + " KiB";
+    if (x < 1024 * 1024 * 1024) return (x / (1024 * 1024)).toFixed(2) + " MiB";
+    return (x / (1024 * 1024 * 1024)).toFixed(2) + " GiB";
+  }
+
+  if (typeof Chart !== "undefined") {
+    Chart.defaults.color = "#c4cdd6";
+    Chart.defaults.borderColor = "#3d4f66";
+    Chart.defaults.font.family = 'system-ui, "Segoe UI", sans-serif';
+  }
+
+  var chartInstances = {
+    dataVsIndex: null,
+    indexSizes: null,
+    bsonSample: null,
+    explain: null,
+  };
+
+  function destroyChart(key) {
+    if (chartInstances[key]) {
+      chartInstances[key].destroy();
+      chartInstances[key] = null;
+    }
+  }
+
+  function shortId(idStr) {
+    var s = String(idStr || "");
+    if (s.length <= 10) return s || "?";
+    return "…" + s.slice(-8);
+  }
+
+  function renderStorageCharts(collStats) {
+    destroyChart("dataVsIndex");
+    destroyChart("indexSizes");
+    var card = document.getElementById("chartsCard");
+    if (!collStats || typeof Chart === "undefined") {
+      card.classList.add("hidden");
+      return;
+    }
+    card.classList.remove("hidden");
+
+    var size = Number(collStats.size) || 0;
+    var idxTotal = Number(collStats.totalIndexSize) || 0;
+    var ctx1 = document.getElementById("chartDataVsIndex");
+    if (size === 0 && idxTotal === 0) {
+      chartInstances.dataVsIndex = null;
+    } else {
+      chartInstances.dataVsIndex = new Chart(ctx1, {
+        type: "doughnut",
+        data: {
+          labels: ["Datos (size)", "Índices (totalIndexSize)"],
+          datasets: [{
+            data: [Math.max(size, 0.0001), Math.max(idxTotal, 0.0001)],
+            backgroundColor: ["#3ecf8e", "#1d9bf0"],
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return ctx.label + ": " + fmtBytes(ctx.raw);
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    var ixSizes = collStats.indexSizes && typeof collStats.indexSizes === "object"
+      ? collStats.indexSizes
+      : {};
+    var ixLabels = Object.keys(ixSizes);
+    var ixVals = ixLabels.map(function (k) { return Number(ixSizes[k]) || 0; });
+    var ctx2 = document.getElementById("chartIndexSizes");
+    destroyChart("indexSizes");
+    if (ixLabels.length === 0) {
+      chartInstances.indexSizes = null;
+    } else {
+      chartInstances.indexSizes = new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: ixLabels,
+          datasets: [{
+            label: "Bytes",
+            data: ixVals,
+            backgroundColor: "#8b5cf6",
+            borderRadius: 4,
+          }],
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) {
+                  return fmtBytes(ctx.raw);
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: {
+                callback: function (v) {
+                  return fmtBytes(v);
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+  }
+
+  function renderBsonChart(bsonMuestra) {
+    destroyChart("bsonSample");
+    var docs = (bsonMuestra && bsonMuestra.documentos) ? bsonMuestra.documentos : [];
+    var ctx = document.getElementById("chartBsonSample");
+    if (docs.length === 0 || typeof Chart === "undefined") return;
+    chartInstances.bsonSample = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: docs.map(function (d) { return shortId(d.id); }),
+        datasets: [{
+          label: "BSON (bytes)",
+          data: docs.map(function (d) { return d.bsonBytes; }),
+          backgroundColor: "#eecf9f",
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: function (ctx) {
+                var full = docs[ctx.dataIndex] && docs[ctx.dataIndex].id;
+                return full ? "id: " + full : "";
+              },
+            },
+          },
+        },
+        scales: {
+          y: {
+            title: { display: true, text: "Bytes" },
+          },
+        },
+      },
+    });
+  }
+
+  function renderExplainChart(sum) {
+    destroyChart("explain");
+    var wrap = document.getElementById("explainChartWrap");
+    var ctx = document.getElementById("chartExplain");
+    if (!sum || typeof Chart === "undefined") {
+      wrap.style.display = "none";
+      return;
+    }
+    var ret = Number(sum.nReturned);
+    var docsEx = Number(sum.totalDocsExamined);
+    var keysEx = Number(sum.totalKeysExamined);
+    if ([ret, docsEx, keysEx].every(function (x) { return Number.isNaN(x); })) {
+      wrap.style.display = "none";
+      return;
+    }
+    var vals = [
+      Number.isFinite(ret) ? ret : 0,
+      Number.isFinite(docsEx) ? docsEx : 0,
+      Number.isFinite(keysEx) ? keysEx : 0,
+    ];
+    var max = Math.max.apply(null, vals.concat([1]));
+    var norm = vals.map(function (v) { return max ? (v / max) * 100 : 0; });
+    wrap.style.display = "block";
+    chartInstances.explain = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: [
+          "Documentos devueltos",
+          "Documentos examinados",
+          "Claves de índice examinadas",
+        ],
+        datasets: [{
+          label: "Normalizado (%)",
+          data: norm,
+          backgroundColor: ["#3ecf8e", "#f87171", "#1d9bf0"],
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var raw = vals[ctx.dataIndex];
+                var pct = norm[ctx.dataIndex].toFixed(1);
+                return raw + " unidades · " + pct + " % del máximo local";
+              },
+            },
+          },
+        },
+        scales: {
+          y: {
+            max: 100,
+            title: { display: true, text: "% respecto al máximo de la consulta" },
+          },
+        },
+      },
+    });
+  }
+
+  function showErr(msg) {
+    var el = document.getElementById("globalErr");
+    if (!msg) {
+      el.style.display = "none";
+      el.textContent = "";
+      return;
+    }
+    el.style.display = "block";
+    el.textContent = msg;
+  }
+
+  var lastCollStats = null;
+
+  function renderResumen(data) {
+    var area = document.getElementById("resumenArea");
+    if (!data || !data.ok) {
+      area.innerHTML = "<p style=\"color:#8b98a5\">Sin datos.</p>";
+      document.getElementById("chartsCard").classList.add("hidden");
+      return;
+    }
+    lastCollStats = data.collStats;
+    var cs = data.collStats || {};
+    var ix = data.indexes || [];
+    var bson = data.bsonMuestra || {};
+
+    var rows = [
+      ["Base de datos", data.dbName],
+      ["Colección", data.collection],
+      ["Documentos (count)", String(cs.count != null ? cs.count : "—")],
+      ["Tamaño lógico datos (size)", fmtBytes(cs.size)],
+      ["Promedio BSON/doc (avgObjSize)", fmtBytes(cs.avgObjSize)],
+      ["Almacenamiento asignado (storageSize)", fmtBytes(cs.storageSize)],
+      ["Tamaño total índices", fmtBytes(cs.totalIndexSize)],
+    ];
+
+    var table =
+      "<table class=\"stat\"><tbody>" +
+      rows
+        .map(function (r) {
+          return "<tr><th>" + r[0] + "</th><td>" + r[1] + "</td></tr>";
+        })
+        .join("") +
+      "</tbody></table>";
+
+    var ixLines = ix
+      .map(function (ind) {
+        var k = ind.key ? JSON.stringify(ind.key) : "{}";
+        return "<span class=\"pill\">" + ind.name + "</span> <code>" + k + "</code>";
+      })
+      .join("<br>");
+
+    var bsonDocs = (bson.documentos || [])
+      .map(function (d) {
+        return "<code>" + d.id + "</code> — " + d.bsonBytes + " B";
+      })
+      .join("<br>");
+
+    var cualAl = (data.cualitativo && data.cualitativo.almacenamiento) || [];
+    var cualIx = (data.cualitativo && data.cualitativo.indexacion) || [];
+
+    area.innerHTML =
+      table +
+      "<h3>Índices actuales</h3><p style=\"margin:0.25rem 0 0;font-size:0.88rem;\">" +
+      (ixLines || "<span style=\"color:#8b98a5\">Sin índices listados.</span>") +
+      "</p>" +
+      "<h3>Tamaño BSON (muestra reciente)</h3>" +
+      "<p style=\"font-size:0.82rem;color:#8b98a5;margin:0 0 0.35rem\">" +
+      (bson.nota || "") +
+      "</p>" +
+      "<p style=\"margin:0;font-size:0.88rem;line-height:1.45\">" +
+      (bsonDocs || "<span style=\"color:#8b98a5\">Sin documentos.</span>") +
+      "</p>" +
+      "<p style=\"margin:0.5rem 0 0;font-size:0.88rem\">Promedio muestra: <strong>" +
+      (bson.promedioMuestraBytes || 0) +
+      " B</strong> · min " +
+      (bson.minMuestraBytes || 0) +
+      " B · max " +
+      (bson.maxMuestraBytes || 0) +
+      " B</p>" +
+      "<h3>Notas cualitativas — almacenamiento</h3><ul>" +
+      cualAl.map(function (t) { return "<li>" + t + "</li>"; }).join("") +
+      "</ul>" +
+      "<h3>Notas cualitativas — indexación</h3><ul>" +
+      cualIx.map(function (t) { return "<li>" + t + "</li>"; }).join("") +
+      "</ul>";
+
+    renderStorageCharts(cs);
+    renderBsonChart(bson);
+    updateProjection();
+  }
+
+  function updateProjection() {
+    var out = document.getElementById("projOut");
+    var extra = Number(document.getElementById("extraDocs").value);
+    var pct = Number(document.getElementById("extraIndexesPct").value);
+    if (!lastCollStats || Number.isNaN(extra)) {
+      out.textContent = "Esperando datos de collStats…";
+      return;
+    }
+    var avg = Number(lastCollStats.avgObjSize) || 0;
+    var dataNew = Math.round(extra * avg);
+    var idxNew = Math.round(dataNew * (Number.isFinite(pct) ? pct / 100 : 0));
+    var ratioNote = "";
+    var sz = Number(lastCollStats.size);
+    var ti = Number(lastCollStats.totalIndexSize);
+    if (sz > 0 && Number.isFinite(ti)) {
+      ratioNote = "Ratio observado índices/datos en esta colección: " + ((ti / sz) * 100).toFixed(2) + "%";
+    }
+    var lines = [
+      "avgObjSize informado por el servidor: " + fmtBytes(avg),
+      ratioNote,
+      "Datos nuevos estimados: " + extra + " docs × " + avg + " B ≈ " + fmtBytes(dataNew),
+      "Índices (supuesto +" + (Number.isFinite(pct) ? pct : 0) + "% sobre datos nuevos): ≈ " + fmtBytes(idxNew),
+      "Total incremental aproximado: ≈ " + fmtBytes(dataNew + idxNew),
+      "",
+      "Limitaciones: no incluye compresión WiredTiger real ni fragmentación; GridFS y payloads binarios grandes deben modelarse aparte.",
+    ].filter(Boolean);
+    out.textContent = lines.join("\n");
+  }
+
+  document.getElementById("extraDocs").addEventListener("input", updateProjection);
+  document.getElementById("extraIndexesPct").addEventListener("input", updateProjection);
+
+  document.getElementById("btnResumen").onclick = async function () {
+    var btn = document.getElementById("btnResumen");
+    btn.disabled = true;
+    showErr("");
+    try {
+      var res = await fetch("/api/metricas/resumen");
+      var data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Error en resumen");
+      renderResumen(data);
+    } catch (e) {
+      showErr(String(e.message || e));
+    }
+    btn.disabled = false;
+  };
+
+  function parseJsonArea(id, fallback) {
+    var raw = document.getElementById(id).value.trim();
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  }
+
+  document.getElementById("btnExplainEj").onclick = function () {
+    document.getElementById("fFilter").value = JSON.stringify({ nombre: "Alumno demo" }, null, 2);
+    document.getElementById("fSort").value = JSON.stringify({ creadoEn: -1 }, null, 2);
+    document.getElementById("fProj").value = JSON.stringify({ nombre: 1, edad: 1, _id: 1 }, null, 2);
+    document.getElementById("fLimit").value = "20";
+  };
+
+  document.getElementById("btnExplain").onclick = async function () {
+    var btn = document.getElementById("btnExplain");
+    btn.disabled = true;
+    showErr("");
+    document.getElementById("explainOut").textContent = "Analizando…";
+    document.getElementById("explainCual").innerHTML = "";
+    destroyChart("explain");
+    document.getElementById("explainChartWrap").style.display = "none";
+    try {
+      var filter = parseJsonArea("fFilter", {});
+      var sort = parseJsonArea("fSort", { creadoEn: -1 });
+      var projRaw = document.getElementById("fProj").value.trim();
+      var projection = projRaw ? JSON.parse(projRaw) : null;
+      var limit = Number(document.getElementById("fLimit").value);
+      var res = await fetch("/api/metricas/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filter: filter, sort: sort, projection: projection, limit: limit }),
+      });
+      var data = await res.json();
+      if (!data.ok) throw new Error(data.error || "explain falló");
+      var sum = data.resumen || {};
+      var cual = data.cualitativo || [];
+      renderExplainChart(sum);
+      var chips =
+        "<p style=\"margin:0 0 0.35rem\"><strong>Tiempo:</strong> " +
+        (sum.executionTimeMillis != null ? sum.executionTimeMillis + " ms" : "—") +
+        " · <strong>Devueltos:</strong> " +
+        (sum.nReturned != null ? sum.nReturned : "—") +
+        " · <strong>Docs examinados:</strong> " +
+        (sum.totalDocsExamined != null ? sum.totalDocsExamined : "—") +
+        " · <strong>Claves índice:</strong> " +
+        (sum.totalKeysExamined != null ? sum.totalKeysExamined : "—") +
+        "</p>";
+      chips +=
+        "<p style=\"margin:0 0 0.35rem\"><strong>Etapas:</strong> " +
+        (sum.stageResumen || "—") +
+        (sum.tieneIxscan ? " · IXSCAN" : "") +
+        (sum.tieneCollscan ? " · COLLSCAN" : "") +
+        "</p>";
+      chips += "<ul style=\"margin:0.35rem 0 0\">";
+      chips += cual.map(function (t) { return "<li>" + t + "</li>"; }).join("");
+      chips += "</ul>";
+      document.getElementById("explainCual").innerHTML = chips;
+      document.getElementById("explainOut").textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      document.getElementById("explainOut").textContent = String(e.message || e);
+      showErr("Explain: " + String(e.message || e));
+    }
+    btn.disabled = false;
+  };
+})();
+  </script>
+</body>
+</html>

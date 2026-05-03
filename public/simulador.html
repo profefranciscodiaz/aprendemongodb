@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador API — Aprender peticiones HTTP</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, "Segoe UI", sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #0f1419;
+      color: #e7e9ea;
+      line-height: 1.5;
+    }
+    a { color: #1d9bf0; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .nav-top {
+      padding: 0.75rem 1.5rem;
+      background: #1a2332;
+      border-bottom: 1px solid #2f3b4d;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .nav-top a.back { color: #8b98a5; font-size: 0.95rem; }
+    .layout {
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 1.25rem 1.5rem 2.5rem;
+    }
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+    }
+    .lead { color: #8b98a5; font-size: 0.95rem; margin-bottom: 1.25rem; }
+    .card {
+      background: #1a2332;
+      border: 1px solid #2f3b4d;
+      border-radius: 12px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    h2 { font-size: 1.05rem; margin: 0 0 0.75rem; color: #c4cdd6; }
+    h3 { font-size: 0.95rem; margin: 0.75rem 0 0.4rem; color: #8b98a5; }
+    p, li { font-size: 0.92rem; color: #c4cdd6; }
+    ul { margin: 0.35rem 0 0.5rem 1.1rem; padding: 0; }
+    code, .mono {
+      font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+      font-size: 0.86em;
+      background: #0f1419;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+    }
+    .compare {
+      display: grid;
+      gap: 0.75rem;
+    }
+    @media (min-width: 600px) {
+      .compare { grid-template-columns: 1fr 1fr; }
+    }
+    .box {
+      background: #0f1419;
+      border: 1px solid #2f3b4d;
+      border-radius: 8px;
+      padding: 0.75rem 0.9rem;
+      font-size: 0.88rem;
+    }
+    .box strong { color: #3ecf8e; }
+    table.gloss {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    .gloss th, .gloss td {
+      text-align: left;
+      padding: 0.4rem 0.35rem;
+      border-bottom: 1px solid #2f3b4d;
+    }
+    .gloss th { color: #8b98a5; width: 28%; }
+    details {
+      border: 1px solid #2f3b4d;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: #121a24;
+    }
+    details summary {
+      cursor: pointer;
+      padding: 0.6rem 0.85rem;
+      font-weight: 600;
+      color: #e7e9ea;
+    }
+    details[open] summary { border-bottom: 1px solid #2f3b4d; }
+    .details-body { padding: 0.75rem 0.9rem 0.9rem; }
+    /* Simulador estilo Postman */
+    .pm-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: stretch;
+      margin-bottom: 0.75rem;
+    }
+    .pm-method {
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #3d4f66;
+      background: #0f1419;
+      color: #e7e9ea;
+      font-weight: 600;
+      min-width: 6rem;
+    }
+    .pm-url {
+      flex: 1;
+      min-width: 12rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #3d4f66;
+      background: #0f1419;
+      color: #e7e9ea;
+      font-size: 0.92rem;
+    }
+    .pm-send {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #1d9bf0;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .pm-send:hover { filter: brightness(1.06); }
+    .pm-send:disabled { opacity: 0.5; cursor: wait; }
+    label.pm-label { display: block; font-size: 0.82rem; color: #8b98a5; margin-bottom: 0.35rem; }
+    textarea.pm-body {
+      width: 100%;
+      min-height: 7rem;
+      padding: 0.65rem;
+      border-radius: 8px;
+      border: 1px solid #3d4f66;
+      background: #0f1419;
+      color: #eecf9f;
+      font-family: inherit;
+      font-size: 0.88rem;
+      resize: vertical;
+    }
+    .quick {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+    .quick button {
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border: 1px solid #3d4f66;
+      background: #243044;
+      color: #c4cdd6;
+      cursor: pointer;
+    }
+    .quick button:hover { background: #2c3a52; }
+    .resp-status {
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .resp-status.ok { background: #0d2818; color: #3ecf8e; }
+    .resp-status.err { background: #2a1515; color: #f87171; }
+    pre.pm-out {
+      margin: 0;
+      padding: 0.75rem;
+      background: #0a0e12;
+      border-radius: 8px;
+      border: 1px solid #2f3b4d;
+      overflow-x: auto;
+      font-size: 0.82rem;
+      color: #b8c5d3;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .hint-mini { font-size: 0.82rem; color: #8b98a5; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <nav class="nav-top" aria-label="Secciones del proyecto">
+    <a class="back" href="/">Inicio</a>
+    <span style="color:#3d4f66">|</span>
+    <a href="/simulador">Simulador Postman</a>
+    <span style="color:#3d4f66">|</span>
+    <a href="/metricas">Estimación MongoDB</a>
+    <span style="color:#3d4f66">|</span>
+    <span style="font-size:0.9rem;color:#8b98a5">Simulador didáctico (mismo servidor)</span>
+  </nav>
+
+  <div class="layout">
+    <h1>Simulador de peticiones HTTP</h1>
+    <p class="lead">
+      Esta página imita la zona principal de <strong>Postman</strong>: eliges un <strong>método</strong>, escribes la <strong>dirección del recurso</strong> y envías la petición.
+      Abajo tienes conceptos y un área para <strong>probar en vivo</strong> contra la API de este proyecto (<code>/api/personas</code>).
+    </p>
+
+    <div class="card">
+      <h2>Glosario rápido</h2>
+      <table class="gloss">
+        <tr><th>HTTP</th><td>Protocolo de comunicación entre cliente (navegador, Postman, esta página) y servidor.</td></tr>
+        <tr><th>Petición</th><td>Mensaje que envía el cliente: método + URI + cabeceras y a veces cuerpo.</td></tr>
+        <tr><th>Respuesta</th><td>Mensaje que devuelve el servidor: <strong>código de estado</strong> (número), cabeceras y cuerpo (HTML, JSON…).</td></tr>
+        <tr><th>Método</th><td>Verbo que indica la intención: <code>GET</code> leer, <code>POST</code> crear, <code>DELETE</code> borrar, etc.</td></tr>
+        <tr><th>Endpoint</th><td>Ruta concreta en el servidor, ej. <code>/api/personas</code>. Suele usarse como sinónimo de “URL del recurso”.</td></tr>
+        <tr><th>Cabeceras</th><td>Metadatos de la petición o respuesta. Ej.: <code>Content-Type: application/json</code> dice que el cuerpo es JSON.</td></tr>
+        <tr><th>Cuerpo (body)</th><td>Datos que viajan en la petición (típico en <code>POST</code>/<code>PUT</code>). En JSON va entre llaves.</td></tr>
+        <tr><th>Código de estado</th><td>Número de tres dígitos: 2xx éxito, 4xx error del cliente, 5xx error del servidor.</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>URI vs URL: ¿qué va en la barra de dirección?</h2>
+      <div class="compare">
+        <div class="box">
+          <strong>URI</strong> (Identificador de Recurso)<br>
+          “Nombre” o ruta del recurso. Ejemplo: <code>/api/personas</code> o <code>/api/personas/673abc...</code>.
+          No dice solo cómo localizarlo en la red; a veces incluye solo la parte del camino.
+        </div>
+        <div class="box">
+          <strong>URL</strong> (Localizador Uniforme)<br>
+          Es una URI que además indica <strong>dónde</strong> está el servidor en Internet:
+          incluye esquema (<code>http</code>/<code>https</code>), host (<code>localhost:3000</code>) y normalmente la ruta.
+          Ejemplo completo: <code>http://localhost:3000/api/personas</code>.
+        </div>
+      </div>
+      <p style="margin-top:0.75rem;margin-bottom:0;font-size:0.88rem;color:#8b98a5;">
+        En Postman y aquí escribes normalmente la <strong>URL completa</strong>. Si pones solo la ruta (<code>/api/personas</code>),
+        esta página la completa con el mismo origen (<code>window.location.origin</code>) para que funcione contra tu servidor local.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Métodos HTTP más usados</h2>
+      <table class="gloss">
+        <tr><th>GET</th><td>Obtener datos (listar o leer). No debe cambiar el servidor. Sin cuerpo habitualmente.</td></tr>
+        <tr><th>POST</th><td>Crear un recurso o enviar datos. Suele llevar <strong>body</strong> (ej. JSON).</td></tr>
+        <tr><th>PUT</th><td>Reemplazar por completo un recurso existente (REST).</td></tr>
+        <tr><th>PATCH</th><td>Actualizar solo parte de un recurso.</td></tr>
+        <tr><th>DELETE</th><td>Eliminar un recurso. A veces el id va en la URL.</td></tr>
+      </table>
+      <p style="margin-top:0.65rem;font-size:0.88rem;color:#8b98a5;">
+        Este proyecto expone <code>GET</code>, <code>POST</code> y <code>DELETE</code> en <code>/api/personas</code>.
+      </p>
+    </div>
+
+    <details>
+      <summary>¿Dónde va cada cosa (como en Postman)?</summary>
+      <div class="details-body">
+        <ul>
+          <li><strong>Método</strong>: selector a la izquierda (GET, POST…).</li>
+          <li><strong>URL</strong>: campo grande central — ahí va la dirección completa o la ruta del endpoint.</li>
+          <li><strong>Body</strong>: pestaña “Body” en Postman; aquí el área de texto JSON solo aplica a métodos que envían datos.</li>
+          <li><strong>Headers</strong>: esta demo añade automáticamente <code>Content-Type: application/json</code> cuando envías JSON en POST.</li>
+          <li><strong>Send</strong>: envía la petición y debajo verás el código de estado y el cuerpo de respuesta.</li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="card">
+      <h2>Prueba en vivo (simulador)</h2>
+      <p style="margin-top:0;font-size:0.88rem;color:#8b98a5;">
+        El resultado aparece abajo. Tu servidor debe estar en marcha (<code>npm start</code>). Para <strong>DELETE</strong>,
+        primero haz un GET, copia un <code>_id</code> del JSON y pon la URL como
+        <code>http://localhost:PUERTO/api/personas/TU_ID_AQUI</code>.
+      </p>
+
+      <div class="quick">
+        <button type="button" id="q-get">Rellenar: GET lista</button>
+        <button type="button" id="q-post">Rellenar: POST ejemplo</button>
+        <button type="button" id="q-del">Rellenar: DELETE (edita el id)</button>
+      </div>
+
+      <div class="pm-row">
+        <select class="pm-method" id="method" aria-label="Método HTTP">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>PATCH</option>
+          <option>DELETE</option>
+        </select>
+        <input type="text" class="pm-url" id="url" placeholder="http://localhost:3000/api/personas" autocomplete="off" spellcheck="false" aria-label="URL o ruta">
+        <button type="button" class="pm-send" id="send">Enviar</button>
+      </div>
+
+      <label class="pm-label" for="body">Cuerpo (JSON) — útil para POST; déjalo vacío para GET/DELETE</label>
+      <textarea class="pm-body" id="body" placeholder='{\n  "nombre": "Ejemplo",\n  "fechaNacimiento": "2000-05-20"\n}'></textarea>
+      <p class="hint-mini">Si la URL empieza por <code>/</code>, se antepondrá automáticamente el origen actual (mismo host y puerto).</p>
+
+      <h3 style="margin-top:1rem">Respuesta</h3>
+      <div id="statusLine" class="resp-status" style="display:none"></div>
+      <pre class="pm-out" id="output">Pulsa «Enviar» para ver la respuesta aquí.</pre>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  var methodEl = document.getElementById("method");
+  var urlEl = document.getElementById("url");
+  var bodyEl = document.getElementById("body");
+  var sendBtn = document.getElementById("send");
+  var outEl = document.getElementById("output");
+  var statusEl = document.getElementById("statusLine");
+
+  function resolveUrl(raw) {
+    var u = (raw || "").trim();
+    if (!u) throw new Error("Escribe una URL o una ruta (ej. /api/personas)");
+    if (/^https?:\/\//i.test(u)) return u;
+    if (u.startsWith("/")) return window.location.origin + u;
+    return window.location.origin + "/" + u.replace(/^\//, "");
+  }
+
+  function buildOptions(method, bodyText) {
+    var m = method.toUpperCase();
+    var opts = { method: m, headers: {} };
+    if (m === "GET" || m === "DELETE" || m === "HEAD") {
+      return opts;
+    }
+    var trimmed = (bodyText || "").trim();
+    if (trimmed) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = trimmed;
+    }
+    return opts;
+  }
+
+  document.getElementById("q-get").onclick = function () {
+    methodEl.value = "GET";
+    urlEl.value = window.location.origin + "/api/personas";
+    bodyEl.value = "";
+  };
+  document.getElementById("q-post").onclick = function () {
+    methodEl.value = "POST";
+    urlEl.value = window.location.origin + "/api/personas";
+    bodyEl.value = JSON.stringify(
+      { nombre: "Alumno demo", fechaNacimiento: "2002-06-15" },
+      null,
+      2
+    );
+  };
+  document.getElementById("q-del").onclick = function () {
+    methodEl.value = "DELETE";
+    urlEl.value =
+      window.location.origin + "/api/personas/REEMPLAZA_CON_ID_DEL_GET";
+    bodyEl.value = "";
+  };
+
+  sendBtn.onclick = async function () {
+    sendBtn.disabled = true;
+    statusEl.style.display = "none";
+    outEl.textContent = "Enviando…";
+    try {
+      var url = resolveUrl(urlEl.value);
+      var opts = buildOptions(methodEl.value, bodyEl.value);
+      var res = await fetch(url, opts);
+      var text = await res.text();
+      var pretty = text;
+      try {
+        pretty = JSON.stringify(JSON.parse(text), null, 2);
+      } catch (e) {}
+      statusEl.style.display = "inline-block";
+      statusEl.textContent = "Código HTTP " + res.status + " " + res.statusText;
+      statusEl.className = "resp-status " + (res.ok ? "ok" : "err");
+      outEl.textContent = pretty;
+    } catch (err) {
+      statusEl.style.display = "inline-block";
+      statusEl.textContent = "Error en el cliente";
+      statusEl.className = "resp-status err";
+      outEl.textContent = String(err.message || err);
+    }
+    sendBtn.disabled = false;
+  };
+})();
+  </script>
+</body>
+</html>

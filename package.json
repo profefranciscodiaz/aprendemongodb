@@ -1,0 +1,18 @@
+{
+  "name": "proyect_db",
+  "version": "1.0.0",
+  "description": "Demo conexión MongoDB Atlas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [],
+  "license": "ISC",
+  "dependencies": {
+    "bson": "^7.2.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongodb": "^7.2.0"
+  }
+}
